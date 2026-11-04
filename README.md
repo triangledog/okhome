@@ -157,6 +157,9 @@ The integration persists installation ID, device ID, account/profile metadata, a
 metering point in Home Assistant's config entry. Passwords and short-lived request tokens are not
 persisted. Diagnostics redact account, address, device, and metering-point identifiers.
 
+Devices are named from the metering point's street name and house number, matching the app. The
+electricity product is retained as the device model.
+
 The HACS integration is self-contained: it vendors the client under
 `custom_components/ok_home/api` and has no PyPI dependency. The top-level `okhome` package remains
 the canonical standalone implementation; its vendored integration copy must be kept synchronized

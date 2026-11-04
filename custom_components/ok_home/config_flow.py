@@ -19,6 +19,7 @@ from .api.exceptions import (
     ProtocolError,
 )
 from .const import (
+    CONF_ADDRESS,
     CONF_DEVICE_IDENTIFICATION,
     CONF_INSTALLATION_ID,
     CONF_METERING_POINT,
@@ -91,6 +92,7 @@ class OKHomeConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_INSTALLATION_ID: state.installation_id,
             CONF_DEVICE_IDENTIFICATION: state.device_identification,
             CONF_METERING_POINT: point.identification,
+            CONF_ADDRESS: point.address.street_address,
             CONF_NET_AREA: point.address.net_area,
             CONF_POSTAL_CODE: point.address.postal_code,
             CONF_PRODUCT_ID: point.product.product_id,
@@ -101,7 +103,7 @@ class OKHomeConfigFlow(ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(f"{self._profile_number}:{point.identification}")
         self._abort_if_unique_id_configured()
         return self.async_create_entry(
-            title=point.product.name or self._email,
+            title=point.address.street_address or point.product.name or self._email,
             data=self._entry_data(point),
         )
 
@@ -144,11 +146,7 @@ class OKHomeConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def _point_label(point: MeteringPoint) -> str:
-        address = point.address
-        location = " ".join(
-            item for item in (address.street, address.house_number) if item
-        )
-        return f"{location}, {address.postal_code} ({point.product.name or 'OK El'})"
+        return f"{point.address.street_address} ({point.product.name or 'OK El'})"
 
     async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Start reauthentication for an existing device association."""
@@ -180,7 +178,9 @@ class OKHomeConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["base"] = "no_metering_points"
                 else:
                     return self.async_update_reload_and_abort(
-                        reauth_entry, data_updates=self._entry_data(point)
+                        reauth_entry,
+                        title=point.address.street_address or reauth_entry.title,
+                        data_updates=self._entry_data(point),
                     )
         return self.async_show_form(
             step_id="reauth_confirm",

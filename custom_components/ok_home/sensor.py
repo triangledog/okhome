@@ -15,6 +15,7 @@ from typing_extensions import override
 
 from . import OKHomeConfigEntry
 from .const import (
+    CONF_ADDRESS,
     CONF_METERING_POINT,
     CONF_PRODUCT_NAME,
     DOMAIN,
@@ -164,7 +165,7 @@ class OKHomePriceSensor(CoordinatorEntity[OKHomeDataUpdateCoordinator], SensorEn
             identifiers={(DOMAIN, metering_point)},
             manufacturer="OK",
             model=entry.data.get(CONF_PRODUCT_NAME),
-            name=entry.title,
+            name=entry.data.get(CONF_ADDRESS, entry.title),
         )
 
     @property

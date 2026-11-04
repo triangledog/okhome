@@ -9,6 +9,7 @@ from homeassistant.helpers.redact import async_redact_data
 
 from . import OKHomeConfigEntry
 from .const import (
+    CONF_ADDRESS,
     CONF_DEVICE_IDENTIFICATION,
     CONF_INSTALLATION_ID,
     CONF_METERING_POINT,
@@ -19,6 +20,7 @@ from .const import (
 
 TO_REDACT = {
     "email",
+    CONF_ADDRESS,
     CONF_DEVICE_IDENTIFICATION,
     CONF_INSTALLATION_ID,
     CONF_METERING_POINT,

@@ -195,9 +195,29 @@ class Address:
     street: str | None
     house_number: str | None
     postal_code: int
+    postal_office: str | None
     floor: str | None
     door: str | None
     net_area: str | None
+
+    @property
+    def street_address(self) -> str:
+        """Return street name and house number as shown by the app."""
+        return " ".join(value for value in (self.street, self.house_number) if value)
+
+    @property
+    def formatted(self) -> str:
+        """Return a compact human-readable Danish address."""
+        street_line = self.street_address
+        unit = " ".join(value for value in (self.floor, self.door) if value)
+        if unit:
+            street_line = f"{street_line}, {unit}" if street_line else unit
+        postal_line = " ".join(
+            value
+            for value in (str(self.postal_code) if self.postal_code else None, self.postal_office)
+            if value
+        )
+        return ", ".join(value for value in (street_line, postal_line) if value)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Address:
@@ -210,6 +230,7 @@ class Address:
             street=string("addressStreetName"),
             house_number=string("addressHouseNumber"),
             postal_code=_int(data, "addressPostalCode"),
+            postal_office=string("addressPostalOfficeName"),
             floor=string("addressFloor"),
             door=string("addressDoor"),
             net_area=string("netArea"),
