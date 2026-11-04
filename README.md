@@ -1,8 +1,7 @@
 # okhome
 
-Unofficial asynchronous Python client for the OK Hjem electricity APIs, based on OK Hjem Android
-2.10.0 and the published OpenAPI documents. It contains no Home Assistant-specific code and is
-structured so an integration can supply its own auth storage and HTTP lifecycle.
+Unofficial Home Assistant integration and asynchronous Python client for the OK Hjem electricity
+APIs, based on OK Hjem Android 2.10.0 and the published OpenAPI documents.
 
 This project is independent of OK. Use it only with your own account and in accordance with the
 service terms. It does not bypass certificate validation, App Check, or access control.
@@ -19,6 +18,9 @@ The integration is fully self-contained under `custom_components/ok_home`; it do
 the standalone `okhome` package from PyPI. The password is used only during setup or
 reauthentication and is not persisted.
 
+**If you install through HACS, stop here.** The Python installation and command-line examples below
+are optional and only intended for development or standalone use.
+
 ## Status
 
 - Implemented: device registration, READ/WRITE request-token renewal, email/password login,
@@ -27,15 +29,19 @@ reauthentication and is not persisted.
 - Live-verified: device registration and READ-token issuance work without Firebase App Check.
 - Live-verified: a pre-login installation token can fetch generic v3 known and forecast prices.
 - Unit tested with recorded schema-shaped mock responses.
-- Not live-tested with account credentials in this workspace.
+- Live-verified with email/password login and account-specific quarter-hour prices.
 - `totalPrice` is verified as DKK/kWh and comprises distribution, tax, and electricity price.
 - VAT inclusion is likely for the private-customer UI, but remains unverified.
-- Firebase App Check is fail-open in Android, but server behavior without it still needs a live test.
+- Live-verified: login and price retrieval work without a Firebase App Check header.
 
 See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) for endpoint details, data-model
 limitations, and APK class/method references.
 
-## Installation
+## Standalone Python client (optional)
+
+This section is not required for Home Assistant or HACS.
+
+### Development installation
 
 ```bash
 python -m venv .venv
@@ -45,7 +51,7 @@ pip install -e '.[test]'
 
 Python 3.11 or newer is required.
 
-## Authentication configuration
+### Standalone authentication configuration
 
 The APK uses a per-installation UUID plus a component bundled in the official application to sign
 bootstrap requests. The verified app protocol profile is included in the client so HACS users are
@@ -62,8 +68,8 @@ automation but is intentionally not recommended for interactive use.
 
 The example persists installation ID, server device ID, and opaque request tokens in
 `~/.config/okhome/auth.json` with mode `0600`. Passwords and the profile `loginToken` are not
-persisted or logged. For Home Assistant, implement the small `AuthStore` protocol with HA's
-encrypted/restricted storage policy instead of using `FileAuthStore` directly.
+persisted or logged. The Home Assistant integration uses its own in-memory token storage and does
+not use this file.
 
 If a legitimate device ID and request token are already available from local secure storage,
 `StaticTokenAuth` can call electricity endpoints without implementing bootstrap:
@@ -81,7 +87,7 @@ and price methods still require an auth provider.
 
 Do not put these values in source code.
 
-## Library example
+### Library example
 
 ```python
 from pathlib import Path
@@ -128,7 +134,7 @@ Live responses for the tested OK agreement contained four `quarterHourPrices` in
 Forecast hours contained no quarter-hour entries, so the example prints known prices per quarter
 and forecasts per hour. It never derives synthetic quarter-hour forecasts.
 
-## Tests
+## Development checks
 
 ```bash
 pytest
