@@ -160,12 +160,13 @@ class OKHomePriceSensor(CoordinatorEntity[OKHomeDataUpdateCoordinator], SensorEn
         super().__init__(coordinator)
         self.entity_description = description
         metering_point = entry.data[CONF_METERING_POINT]
+        address = entry.data.get(CONF_ADDRESS) or entry.title
         self._attr_unique_id = f"{metering_point}_{description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, metering_point)},
             manufacturer="OK",
             model=entry.data.get(CONF_PRODUCT_NAME),
-            name=entry.data.get(CONF_ADDRESS, entry.title),
+            name=" ".join(address.split()),
         )
 
     @property

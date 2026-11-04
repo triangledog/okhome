@@ -11,6 +11,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.httpx_client import get_async_client
 
 from .api import AuthConfig, AuthState, MemoryAuthStore, OKHomeClient
@@ -20,6 +21,7 @@ from .const import (
     CONF_ADDRESS,
     CONF_DEVICE_IDENTIFICATION,
     CONF_INSTALLATION_ID,
+    CONF_METERING_POINT,
     DOMAIN,
     SERVICE_GET_FORECAST,
     SERVICE_GET_PRICES,
@@ -139,6 +141,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: OKHomeConfigEntry) -> bo
     coordinator.start_interval_updates()
     entry.runtime_data = OKHomeRuntimeData(auth, client, coordinator, store)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_device(
+        identifiers={(DOMAIN, entry.data[CONF_METERING_POINT])}
+    )
+    if device is not None and device.name_by_user is not None:
+        normalized_device_name = " ".join(device.name_by_user.split())
+        if normalized_device_name != device.name_by_user:
+            device_registry.async_update_device(
+                device.id,
+                name_by_user=normalized_device_name,
+            )
     return True
 
 
