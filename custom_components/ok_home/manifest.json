@@ -3,6 +3,7 @@
   "name": "OK Hjem",
   "codeowners": [],
   "config_flow": true,
+  "dependencies": ["persistent_notification"],
   "documentation": "https://github.com/triangledog/okhome",
   "issue_tracker": "https://github.com/triangledog/okhome/issues",
   "integration_type": "service",

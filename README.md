@@ -153,7 +153,9 @@ and the `ok_home.get_prices` and `ok_home.get_forecast` response actions return 
 The API is called once at startup and then daily at 13:05 Europe/Copenhagen, shortly after the next
 day's prices are normally published. If tomorrow's known prices are missing, the integration makes
 at most three 15-minute retries. Entity listeners move to the next known quarter locally every 15
-minutes without API calls.
+minutes without API calls. If all retries are exhausted, Home Assistant creates a persistent
+notification warning that charging plans and automations may be using stale or unavailable prices.
+The notification is dismissed automatically once tomorrow's prices are available.
 
 The integration persists installation ID, device ID, account/profile metadata, and the selected
 metering point in Home Assistant's config entry. Passwords and short-lived request tokens are not

@@ -1,6 +1,9 @@
 """Tests for Home Assistant price interval coordination."""
 
 from datetime import UTC, datetime, timedelta, timezone
+from types import SimpleNamespace
+
+from homeassistant.components import persistent_notification
 
 from custom_components.ok_home.api.models import (
     FuturePricesForecast,
@@ -122,3 +125,32 @@ def test_tomorrow_prices_are_detected_in_copenhagen_date() -> None:
     coordinator = coordinator_with((hour(tomorrow_start, 2.0),))
 
     assert coordinator.has_tomorrow_prices(now)
+
+
+def test_price_failure_notification_is_entry_specific(monkeypatch) -> None:
+    """A failed location gets a clear notification that can later be dismissed."""
+    coordinator = object.__new__(OKHomeDataUpdateCoordinator)
+    coordinator.hass = object()
+    coordinator.config_entry = SimpleNamespace(entry_id="entry-123", title="Testvej 12")
+    created = []
+    dismissed = []
+    monkeypatch.setattr(
+        persistent_notification,
+        "async_create",
+        lambda hass, message, title, notification_id: created.append(
+            (hass, message, title, notification_id)
+        ),
+    )
+    monkeypatch.setattr(
+        persistent_notification,
+        "async_dismiss",
+        lambda hass, notification_id: dismissed.append((hass, notification_id)),
+    )
+
+    coordinator._create_price_notification()
+    coordinator._dismiss_price_notification()
+
+    assert "Charging plans and automations" in created[0][1]
+    assert created[0][2] == "OK Hjem prices unavailable: Testvej 12"
+    assert created[0][3] == "ok_home_entry-123_price_refresh_failed"
+    assert dismissed == [(coordinator.hass, created[0][3])]

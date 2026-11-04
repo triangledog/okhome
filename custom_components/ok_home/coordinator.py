@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -32,6 +33,7 @@ from .const import (
 
 LOGGER = logging.getLogger(__name__)
 COPENHAGEN = ZoneInfo("Europe/Copenhagen")
+PRICE_NOTIFICATION_SUFFIX = "price_refresh_failed"
 
 
 def next_publication_refresh(now: datetime, *, skip_today: bool = False) -> datetime:
@@ -125,6 +127,7 @@ class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
         local_now = now.astimezone(COPENHAGEN)
         publication = time(PRICE_PUBLICATION_HOUR, PRICE_PUBLICATION_MINUTE)
         if self.has_tomorrow_prices(now):
+            self._dismiss_price_notification()
             self._schedule_daily_refresh(now, skip_today=True)
         elif local_now.time() >= publication:
             self._schedule_retry(now)
@@ -148,6 +151,7 @@ class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
         self._refresh_unsub = None
         await self.async_request_refresh()
         if self.has_tomorrow_prices(now):
+            self._dismiss_price_notification()
             self._schedule_daily_refresh(now)
         elif self._refresh_retries < PRICE_MAX_RETRIES:
             self._schedule_retry(now)
@@ -156,7 +160,27 @@ class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
                 "Tomorrow's OK Hjem prices are still unavailable after %s retries",
                 PRICE_MAX_RETRIES,
             )
+            self._create_price_notification()
             self._schedule_daily_refresh(now)
+
+    @property
+    def _price_notification_id(self) -> str:
+        return f"{DOMAIN}_{self.config_entry.entry_id}_{PRICE_NOTIFICATION_SUFFIX}"
+
+    def _create_price_notification(self) -> None:
+        persistent_notification.async_create(
+            self.hass,
+            (
+                "OK Hjem could not retrieve tomorrow's electricity prices after "
+                f"{PRICE_MAX_RETRIES} retries. Charging plans and automations may use "
+                "stale or unavailable prices. Check the integration and Home Assistant logs."
+            ),
+            title=f"OK Hjem prices unavailable: {self.config_entry.title}",
+            notification_id=self._price_notification_id,
+        )
+
+    def _dismiss_price_notification(self) -> None:
+        persistent_notification.async_dismiss(self.hass, self._price_notification_id)
 
     @override
     async def async_shutdown(self) -> None:
