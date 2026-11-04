@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -19,14 +20,31 @@ from .api import FuturePricesForecast, OKHomeClient
 from .api.exceptions import APIError, AuthenticationError, NetworkError, ProtocolError
 from .api.models import HourlyPrice
 from .const import (
-    API_UPDATE_INTERVAL,
     CONF_NET_AREA,
     CONF_POSTAL_CODE,
     CONF_PRODUCT_ID,
     DOMAIN,
+    PRICE_MAX_RETRIES,
+    PRICE_PUBLICATION_HOUR,
+    PRICE_PUBLICATION_MINUTE,
+    PRICE_RETRY_MINUTES,
 )
 
 LOGGER = logging.getLogger(__name__)
+COPENHAGEN = ZoneInfo("Europe/Copenhagen")
+
+
+def next_publication_refresh(now: datetime, *, skip_today: bool = False) -> datetime:
+    """Return the next 13:05 Copenhagen publication refresh in UTC."""
+    local_now = now.astimezone(COPENHAGEN)
+    target = datetime.combine(
+        local_now.date(),
+        time(PRICE_PUBLICATION_HOUR, PRICE_PUBLICATION_MINUTE),
+        tzinfo=COPENHAGEN,
+    )
+    if skip_today or target <= local_now:
+        target += timedelta(days=1)
+    return target.astimezone(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +57,7 @@ class PriceInterval:
 
 
 class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
-    """Fetch prices hourly and move sensors locally at quarter boundaries."""
+    """Fetch after daily publication and move sensors locally each quarter."""
 
     config_entry: ConfigEntry
 
@@ -54,10 +72,11 @@ class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
             LOGGER,
             config_entry=config_entry,
             name=DOMAIN,
-            update_interval=API_UPDATE_INTERVAL,
         )
         self.client = client
         self._interval_unsub: Callable[[], None] | None = None
+        self._refresh_unsub: Callable[[], None] | None = None
+        self._refresh_retries = 0
 
     @override
     async def _async_update_data(self) -> FuturePricesForecast:
@@ -73,9 +92,12 @@ class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
             raise UpdateFailed(f"Unable to update OK Hjem prices: {exc}") from exc
 
     def start_interval_updates(self) -> None:
-        """Start local listener updates at each quarter boundary."""
+        """Start local quarter updates and the daily API refresh schedule."""
+        now = dt_util.utcnow()
         if self._interval_unsub is None:
-            self._schedule_next_interval(dt_util.utcnow())
+            self._schedule_next_interval(now)
+        if self._refresh_unsub is None:
+            self._schedule_refresh_after_startup(now)
 
     def _schedule_next_interval(self, now: datetime) -> None:
         candidate = now + timedelta(minutes=15)
@@ -90,11 +112,60 @@ class OKHomeDataUpdateCoordinator(DataUpdateCoordinator[FuturePricesForecast]):
         self.async_update_listeners()
         self._schedule_next_interval(now)
 
+    def has_tomorrow_prices(self, now: datetime | None = None) -> bool:
+        """Return whether known intervals include the next Copenhagen date."""
+        local_now = (now or dt_util.utcnow()).astimezone(COPENHAGEN)
+        tomorrow = local_now.date() + timedelta(days=1)
+        return any(
+            item.start.astimezone(COPENHAGEN).date() >= tomorrow
+            for item in self.known_intervals()
+        )
+
+    def _schedule_refresh_after_startup(self, now: datetime) -> None:
+        local_now = now.astimezone(COPENHAGEN)
+        publication = time(PRICE_PUBLICATION_HOUR, PRICE_PUBLICATION_MINUTE)
+        if self.has_tomorrow_prices(now):
+            self._schedule_daily_refresh(now, skip_today=True)
+        elif local_now.time() >= publication:
+            self._schedule_retry(now)
+        else:
+            self._schedule_daily_refresh(now)
+
+    def _schedule_daily_refresh(self, now: datetime, *, skip_today: bool = False) -> None:
+        self._refresh_retries = 0
+        self._schedule_refresh_at(next_publication_refresh(now, skip_today=skip_today))
+
+    def _schedule_retry(self, now: datetime) -> None:
+        self._refresh_retries += 1
+        self._schedule_refresh_at(now + timedelta(minutes=PRICE_RETRY_MINUTES))
+
+    def _schedule_refresh_at(self, when: datetime) -> None:
+        self._refresh_unsub = async_track_point_in_utc_time(
+            self.hass, self._handle_price_refresh, when
+        )
+
+    async def _handle_price_refresh(self, now: datetime) -> None:
+        self._refresh_unsub = None
+        await self.async_request_refresh()
+        if self.has_tomorrow_prices(now):
+            self._schedule_daily_refresh(now)
+        elif self._refresh_retries < PRICE_MAX_RETRIES:
+            self._schedule_retry(now)
+        else:
+            LOGGER.warning(
+                "Tomorrow's OK Hjem prices are still unavailable after %s retries",
+                PRICE_MAX_RETRIES,
+            )
+            self._schedule_daily_refresh(now)
+
     @override
     async def async_shutdown(self) -> None:
         if self._interval_unsub is not None:
             self._interval_unsub()
             self._interval_unsub = None
+        if self._refresh_unsub is not None:
+            self._refresh_unsub()
+            self._refresh_unsub = None
         await super().async_shutdown()
 
     def known_intervals(self) -> tuple[PriceInterval, ...]:

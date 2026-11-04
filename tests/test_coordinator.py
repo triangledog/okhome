@@ -8,7 +8,11 @@ from custom_components.ok_home.api.models import (
     PriceSeries,
     QuarterHourlyPrice,
 )
-from custom_components.ok_home.coordinator import OKHomeDataUpdateCoordinator
+from custom_components.ok_home.coordinator import (
+    COPENHAGEN,
+    OKHomeDataUpdateCoordinator,
+    next_publication_refresh,
+)
 
 
 def quarter(start: datetime, price: float, index: int = 0) -> QuarterHourlyPrice:
@@ -98,3 +102,23 @@ def test_repeated_dst_hour_is_selected_by_offset() -> None:
 
     assert coordinator.current_interval_index(first + timedelta(minutes=5)) == 0
     assert coordinator.current_interval_index(second + timedelta(minutes=5)) == 1
+
+
+def test_next_publication_refresh_uses_copenhagen_time() -> None:
+    """Daily refresh follows local publication time rather than a fixed UTC hour."""
+    before_publication = datetime(2026, 1, 5, 11, 0, tzinfo=UTC)
+    winter_refresh = next_publication_refresh(before_publication)
+    assert winter_refresh.astimezone(COPENHAGEN).isoformat() == "2026-01-05T13:05:00+01:00"
+
+    after_publication_before_dst = datetime(2026, 3, 28, 14, 0, tzinfo=UTC)
+    summer_refresh = next_publication_refresh(after_publication_before_dst)
+    assert summer_refresh.astimezone(COPENHAGEN).isoformat() == "2026-03-29T13:05:00+02:00"
+
+
+def test_tomorrow_prices_are_detected_in_copenhagen_date() -> None:
+    """Retry decisions use the local delivery date represented by known intervals."""
+    now = datetime(2026, 11, 5, 12, 30, tzinfo=UTC)
+    tomorrow_start = datetime(2026, 11, 5, 23, 0, tzinfo=UTC)
+    coordinator = coordinator_with((hour(tomorrow_start, 2.0),))
+
+    assert coordinator.has_tomorrow_prices(now)

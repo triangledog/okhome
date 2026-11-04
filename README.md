@@ -150,8 +150,10 @@ error logger prints passwords or opaque tokens.
 The first HACS-oriented implementation is under `custom_components/ok_home`. It follows the Nord
 Pool pattern: API responses stay in the coordinator's memory, sensors expose small current values,
 and the `ok_home.get_prices` and `ok_home.get_forecast` response actions return complete series.
-The API is refreshed hourly while entity listeners move to the next known quarter locally every 15
-minutes.
+The API is called once at startup and then daily at 13:05 Europe/Copenhagen, shortly after the next
+day's prices are normally published. If tomorrow's known prices are missing, the integration makes
+at most three 15-minute retries. Entity listeners move to the next known quarter locally every 15
+minutes without API calls.
 
 The integration persists installation ID, device ID, account/profile metadata, and the selected
 metering point in Home Assistant's config entry. Passwords and short-lived request tokens are not
