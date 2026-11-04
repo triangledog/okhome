@@ -225,7 +225,10 @@ class Address:
 
         def string(field: str) -> str | None:
             value = data.get(field)
-            return value if isinstance(value, str) else None
+            if not isinstance(value, str):
+                return None
+            normalized = " ".join(value.split())
+            return normalized or None
 
         return cls(
             street=string("addressStreetName"),

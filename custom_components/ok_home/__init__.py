@@ -17,6 +17,7 @@ from .api import AuthConfig, AuthState, MemoryAuthStore, OKHomeClient
 from .api.auth import OKHomeAuth
 from .const import (
     ATTR_CONFIG_ENTRY_ID,
+    CONF_ADDRESS,
     CONF_DEVICE_IDENTIFICATION,
     CONF_INSTALLATION_ID,
     DOMAIN,
@@ -113,6 +114,18 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: OKHomeConfigEntry) -> bool:
     """Set up an OK Hjem account from a config entry."""
+    address = entry.data.get(CONF_ADDRESS)
+    normalized_address = " ".join(address.split()) if isinstance(address, str) else address
+    normalized_title = " ".join(entry.title.split())
+    if normalized_address != address:
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_ADDRESS: normalized_address},
+            title=normalized_title,
+        )
+    elif normalized_title != entry.title:
+        hass.config_entries.async_update_entry(entry, title=normalized_title)
+
     state = AuthState(
         installation_id=entry.data[CONF_INSTALLATION_ID],
         device_identification=entry.data[CONF_DEVICE_IDENTIFICATION],

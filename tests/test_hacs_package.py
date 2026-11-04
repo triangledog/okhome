@@ -29,13 +29,13 @@ def test_integration_has_vendored_api_modules() -> None:
 def test_street_address_matches_app_naming_in_both_clients() -> None:
     """Canonical and vendored clients expose the same short location name."""
     payload = {
-        "addressStreetName": "Testvej",
-        "addressHouseNumber": "12A",
+        "addressStreetName": "  Testvej                              ",
+        "addressHouseNumber": " 12A ",
         "addressPostalCode": 8000,
-        "addressPostalOfficeName": "Aarhus C",
-        "addressFloor": "2",
-        "addressDoor": "th.",
-        "netArea": "TEST",
+        "addressPostalOfficeName": " Aarhus   C ",
+        "addressFloor": " 2 ",
+        "addressDoor": " th. ",
+        "netArea": " TEST ",
     }
     canonical = Address.from_dict(payload)
     vendored = VendoredAddress.from_dict(payload)
