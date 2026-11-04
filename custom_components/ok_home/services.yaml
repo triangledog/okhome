@@ -1,0 +1,23 @@
+get_prices:
+  name: Get known prices
+  description: Return all currently known quarter-hour prices for an OK Hjem entry.
+  fields:
+    config_entry:
+      name: Config entry
+      description: The OK Hjem config entry to query.
+      required: true
+      selector:
+        config_entry:
+          integration: ok_home
+
+get_forecast:
+  name: Get price forecast
+  description: Return the hourly OK Hjem price forecast.
+  fields:
+    config_entry:
+      name: Config entry
+      description: The OK Hjem config entry to query.
+      required: true
+      selector:
+        config_entry:
+          integration: ok_home

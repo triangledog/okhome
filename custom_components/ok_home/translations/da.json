@@ -1,0 +1,61 @@
+{
+  "title": "OK Hjem",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Forbind til OK Hjem",
+        "description": "Log ind med din OK Hjem-konto. Adgangskoden bruges kun under login og gemmes ikke.",
+        "data": {
+          "email": "Email",
+          "password": "Adgangskode"
+        }
+      },
+      "metering_point": {
+        "title": "Vælg elaftale",
+        "data": {
+          "metering_point": "Adresse og produkt"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Forbind OK Hjem igen",
+        "description": "Indtast adgangskoden til {email}. Den bliver ikke gemt.",
+        "data": {
+          "password": "Adgangskode"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke oprette forbindelse til OK Hjem",
+      "invalid_auth": "Email eller adgangskode er forkert",
+      "no_metering_points": "Der blev ikke fundet en komplet aktiv elaftale",
+      "unknown": "Der opstod en uventet fejl"
+    },
+    "abort": {
+      "already_configured": "Denne OK Hjem-konto er allerede konfigureret",
+      "reauth_successful": "OK Hjem blev forbundet igen"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Aktuel pris"},
+      "previous_price": {"name": "Forrige pris"},
+      "next_price": {"name": "Næste pris"},
+      "lowest_known_price": {"name": "Laveste kendte pris"},
+      "highest_known_price": {"name": "Højeste kendte pris"},
+      "known_average_price": {"name": "Gennemsnitlig kendt pris"},
+      "electricity_price": {"name": "Elpris inklusive tillæg"},
+      "distribution_price": {"name": "Distribution"},
+      "tax": {"name": "Elafgift"}
+    }
+  },
+  "services": {
+    "get_prices": {
+      "name": "Hent kendte priser",
+      "description": "Returnerer alle aktuelt kendte kvarterspriser."
+    },
+    "get_forecast": {
+      "name": "Hent prisprognose",
+      "description": "Returnerer den timebaserede prisprognose."
+    }
+  }
+}

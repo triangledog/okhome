@@ -1,0 +1,54 @@
+{
+  "title": "OK Hjem",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to OK Hjem",
+        "description": "Sign in with your OK Hjem account. The password is used only during sign-in and is not stored.",
+        "data": {"email": "Email", "password": "Password"}
+      },
+      "metering_point": {
+        "title": "Select electricity agreement",
+        "data": {"metering_point": "Address and product"}
+      },
+      "reauth_confirm": {
+        "title": "Reconnect OK Hjem",
+        "description": "Enter the password for {email}. It will not be stored.",
+        "data": {"password": "Password"}
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to OK Hjem",
+      "invalid_auth": "The email or password is invalid",
+      "no_metering_points": "No complete active electricity agreement was found",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This OK Hjem account is already configured",
+      "reauth_successful": "OK Hjem was reconnected"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {"name": "Current price"},
+      "previous_price": {"name": "Previous price"},
+      "next_price": {"name": "Next price"},
+      "lowest_known_price": {"name": "Lowest known price"},
+      "highest_known_price": {"name": "Highest known price"},
+      "known_average_price": {"name": "Known average price"},
+      "electricity_price": {"name": "Electricity price including markup"},
+      "distribution_price": {"name": "Distribution"},
+      "tax": {"name": "Electricity duty"}
+    }
+  },
+  "services": {
+    "get_prices": {
+      "name": "Get known prices",
+      "description": "Return all currently known quarter-hour prices."
+    },
+    "get_forecast": {
+      "name": "Get price forecast",
+      "description": "Return the hourly price forecast."
+    }
+  }
+}

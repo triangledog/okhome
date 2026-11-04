@@ -1,0 +1,11 @@
+{
+  "domain": "ok_home",
+  "name": "OK Hjem",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/triangledog/okhome",
+  "issue_tracker": "https://github.com/triangledog/okhome/issues",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "version": "0.1.0"
+}
