@@ -143,8 +143,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: OKHomeConfigEntry) -> bo
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(
-        identifiers={(DOMAIN, entry.data[CONF_METERING_POINT])}
+    device_identifier = (DOMAIN, entry.data[CONF_METERING_POINT])
+    device = next(
+        (
+            candidate
+            for candidate in dr.async_entries_for_config_entry(
+                device_registry, entry.entry_id
+            )
+            if device_identifier in candidate.identifiers
+        ),
+        None,
     )
     if device is not None and device.name_by_user is not None:
         normalized_device_name = " ".join(device.name_by_user.split())
