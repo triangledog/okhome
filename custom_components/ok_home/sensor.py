@@ -30,6 +30,7 @@ class OKHomeSensorDescription(SensorEntityDescription):
 
     value_fn: Callable[[OKHomeDataUpdateCoordinator], float | None]
     interval_fn: Callable[[OKHomeDataUpdateCoordinator], PriceInterval | None] | None = None
+    include_hourly_prices: bool = False
 
 
 def _relative_value(coordinator: OKHomeDataUpdateCoordinator, offset: int) -> float | None:
@@ -53,6 +54,7 @@ SENSORS: tuple[OKHomeSensorDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda coordinator: _relative_value(coordinator, 0),
         interval_fn=lambda coordinator: coordinator.relative_interval(0),
+        include_hourly_prices=True,
     ),
     OKHomeSensorDescription(
         key="previous_price",
@@ -150,6 +152,7 @@ class OKHomePriceSensor(CoordinatorEntity[OKHomeDataUpdateCoordinator], SensorEn
 
     entity_description: OKHomeSensorDescription
     _attr_has_entity_name = True
+    _unrecorded_attributes = frozenset({"hourly_prices"})
 
     def __init__(
         self,
@@ -178,13 +181,22 @@ class OKHomePriceSensor(CoordinatorEntity[OKHomeDataUpdateCoordinator], SensorEn
     @property
     @override
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Expose only the selected interval, never the complete price series."""
-        if self.entity_description.interval_fn is None:
-            return None
-        interval = self.entity_description.interval_fn(self.coordinator)
-        if interval is None:
-            return None
-        return {
-            "valid_from": interval.start.isoformat(),
-            "valid_to": interval.end.isoformat(),
-        }
+        """Expose the selected interval and optional dashboard price series."""
+        attributes: dict[str, Any] = {}
+        if self.entity_description.interval_fn is not None:
+            interval = self.entity_description.interval_fn(self.coordinator)
+            if interval is not None:
+                attributes.update(
+                    valid_from=interval.start.isoformat(),
+                    valid_to=interval.end.isoformat(),
+                )
+        if self.entity_description.include_hourly_prices and self.coordinator.data:
+            attributes["hourly_prices"] = [
+                {
+                    "start": hour.valid_from.isoformat(),
+                    "end": hour.valid_to.isoformat(),
+                    "price": hour.total_price,
+                }
+                for hour in self.coordinator.data.future_prices.prices
+            ]
+        return attributes or None
